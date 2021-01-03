@@ -24,7 +24,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
-MAX_DECEL = .5
+MAX_DECEL = 1
 
 
 class WaypointUpdater(object):
@@ -40,7 +40,7 @@ class WaypointUpdater(object):
         # TODO: Add other member variables you need below
         self.base_lane = None
         self.pose = None
-        self.base_waypoints = None
+        self.stopline_wp_idx = -1
         self.waypoints_2d = None
         self.waypoint_tree = None
         
@@ -51,9 +51,8 @@ class WaypointUpdater(object):
     def loop(self):
         rate = rospy.Rate(50)
         while not rospy.is_shutdown():
-            if self.pose and self.base_waypoints:
-                closest_waypoints_idx = self.get_closest_waypoints_idx()
-                self.publish_waypoints(closest_waypoints_idx)
+            if self.pose and self.base_line:
+                self.publish_waypoints()
             rate.sleep()
             
     def get_closest_waypoints_idx(self):
@@ -87,7 +86,7 @@ class WaypointUpdater(object):
         farthest_idx = closest_idx + LOOKAHEAD_WPS
         base_waypoints = self.base_lane.waypoints[closest_idx: farthest_idx]
 
-        if self.stopline_wp_idx == 1 or (self.stopline_wp_idx >= farthest_idx):
+        if (self.stopline_wp_idx == -1) or (self.stopline_wp_idx >= farthest_idx):
             lane.waypoints = base_waypoints
         else:
             lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
@@ -120,7 +119,7 @@ class WaypointUpdater(object):
 
     def waypoints_cb(self, waypoints):
         # TODO: Implement
-        self.base_waypoints = waypoints
+        self.base_lane = waypoints
         if not self.waypoints_2d:
             self.waypoints_2d = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints.waypoints]
             self.waypoint_tree = KDTree(self.waypoints_2d)
